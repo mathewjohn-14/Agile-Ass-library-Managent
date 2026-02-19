@@ -1,75 +1,88 @@
 import json
 import os
+from datetime import datetime
+
+class Book:
+    def __init__(self, title, quantity):
+        self.title = title
+        self.quantity = quantity
+
+    def to_dict(self):
+        return {"title": self.title, "quantity": self.quantity}
 
 class Library:
-    def __init__(self, filename="library_data.json"):
+    def __init__(self, filename="library_v4.json"):
         self.filename = filename
         self.books = self.load_data()
+        self.log_file = "library_activity.log"
 
     def load_data(self):
-        """Task: Load library from a file or create default if missing."""
         if os.path.exists(self.filename):
             with open(self.filename, 'r') as f:
-                return json.load(f)
-        return {"Python Basics": 3, "Jenkins CI/CD": 1, "Data Science 101": 2}
+                data = json.load(f)
+                return [Book(b['title'], b['quantity']) for b in data]
+        # Default starting stock
+        return [Book("Python Basics", 3), Book("Jenkins CI/CD", 1)]
 
     def save_data(self):
-        """Task: Save current inventory to file."""
         with open(self.filename, 'w') as f:
-            json.dump(self.books, f, indent=4)
+            json.dump([b.to_dict() for b in self.books], f, indent=4)
+
+    def log_action(self, message):
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with open(self.log_file, "a") as f:
+            f.write(f"[{timestamp}] {message}\n")
 
     def display_books(self):
-        print("\n--- Current Inventory ---")
-        if not self.books:
-            print("Library is empty.")
-        else:
-            for book, count in self.books.items():
-                status = "Available" if count > 0 else "OUT OF STOCK"
-                print(f"- {book} [{count} copies] ({status})")
+        print(f"\n{'ID':<5} {'Title':<20} {'Stock':<10}")
+        print("-" * 35)
+        for idx, b in enumerate(self.books, 1):
+            print(f"{idx:<5} {b.title:<20} {b.quantity:<10}")
 
-    def lend_book(self, book_name):
-        if self.books.get(book_name, 0) > 0:
-            self.books[book_name] -= 1
-            print(f"✔ Success: '{book_name}' borrowed.")
-            self.save_data()
-        else:
-            print(f"✘ Error: '{book_name}' is unavailable.")
+    def lend_book(self, index):
+        try:
+            book = self.books[int(index) - 1]
+            if book.quantity > 0:
+                book.quantity -= 1
+                print(f"✔ Borrowed: {book.title}")
+                self.log_action(f"LENT: {book.title}")
+                self.save_data()
+            else:
+                print("✘ Out of stock!")
+        except (IndexError, ValueError):
+            print("✘ Invalid ID.")
 
-    def return_book(self, book_name):
-        self.books[book_name] = self.books.get(book_name, 0) + 1
-        print(f"✔ Success: '{book_name}' returned.")
+    def return_book(self, title):
+        # Check if book exists, if not, add it
+        found = False
+        for b in self.books:
+            if b.title.lower() == title.lower():
+                b.quantity += 1
+                found = True
+                break
+        if not found:
+            self.books.append(Book(title, 1))
+        
+        print(f"✔ Returned: {title}")
+        self.log_action(f"RETURNED: {title}")
         self.save_data()
 
-    def search_book(self, query):
-        results = [b for b in self.books if query.lower() in b.lower()]
-        if results:
-            print(f"\nResults for '{query}':")
-            for b in results: print(f"- {b} ({self.books[b]} left)")
-        else:
-            print("No matches found.")
-
 def main():
-    my_library = Library()
-    
-    menu = {
-        '1': ("Display Books", my_library.display_books),
-        '2': ("Borrow Book", lambda: my_library.lend_book(input("Book name: "))),
-        '3': ("Return Book", lambda: my_library.return_book(input("Book name: "))),
-        '4': ("Search", lambda: my_library.search_book(input("Keyword: "))),
-        '5': ("Exit", exit)
-    }
-
+    lib = Library()
     while True:
-        print("\n=== LIBRARY SYSTEM V3 ===")
-        for key, value in menu.items():
-            print(f"{key}. {value[0]}")
-        
-        choice = input("Select option: ")
-        if choice in menu:
-            if choice == '5': break
-            menu[choice][1]()
-        else:
-            print("Invalid Option.")
+        print("\n=== SYSTEM V4: OBJECT-ORIENTED ===")
+        print("1. View All\n2. Borrow (by ID)\n3. Return (by Name)\n4. Exit")
+        choice = input("Action: ")
+
+        if choice == '1':
+            lib.display_books()
+        elif choice == '2':
+            lib.display_books()
+            lib.lend_book(input("Enter Book ID: "))
+        elif choice == '3':
+            lib.return_book(input("Enter Book Title: "))
+        elif choice == '4':
+            break
 
 if __name__ == "__main__":
     main()
