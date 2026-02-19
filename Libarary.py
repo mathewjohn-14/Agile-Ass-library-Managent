@@ -1,62 +1,75 @@
+import json
+import os
+
 class Library:
-    def __init__(self, book_list):
-        self.books = book_list
+    def __init__(self, filename="library_data.json"):
+        self.filename = filename
+        self.books = self.load_data()
+
+    def load_data(self):
+        """Task: Load library from a file or create default if missing."""
+        if os.path.exists(self.filename):
+            with open(self.filename, 'r') as f:
+                return json.load(f)
+        return {"Python Basics": 3, "Jenkins CI/CD": 1, "Data Science 101": 2}
+
+    def save_data(self):
+        """Task: Save current inventory to file."""
+        with open(self.filename, 'w') as f:
+            json.dump(self.books, f, indent=4)
 
     def display_books(self):
-        print("\nAvailable Books:")
+        print("\n--- Current Inventory ---")
         if not self.books:
-            print("The library is currently empty.")
-        for index, book in enumerate(self.books, 1):
-            print(f"{index}. {book}")
+            print("Library is empty.")
+        else:
+            for book, count in self.books.items():
+                status = "Available" if count > 0 else "OUT OF STOCK"
+                print(f"- {book} [{count} copies] ({status})")
 
     def lend_book(self, book_name):
-        if book_name in self.books:
-            self.books.remove(book_name)
-            print(f"Success: You have borrowed '{book_name}'.")
+        if self.books.get(book_name, 0) > 0:
+            self.books[book_name] -= 1
+            print(f"✔ Success: '{book_name}' borrowed.")
+            self.save_data()
         else:
-            print(f"Error: '{book_name}' is not in stock.")
+            print(f"✘ Error: '{book_name}' is unavailable.")
 
     def return_book(self, book_name):
-        # Prevent adding duplicates if the library already has it
-        if book_name not in self.books:
-            self.books.append(book_name)
-            print(f"Success: You have returned '{book_name}'.")
-        else:
-            print(f"Note: '{book_name}' was already in the library.")
+        self.books[book_name] = self.books.get(book_name, 0) + 1
+        print(f"✔ Success: '{book_name}' returned.")
+        self.save_data()
 
-    # --- NEW: Search Feature ---
     def search_book(self, query):
         results = [b for b in self.books if query.lower() in b.lower()]
         if results:
-            print(f"\nFound {len(results)} match(es):")
-            for b in results: print(f"- {b}")
+            print(f"\nResults for '{query}':")
+            for b in results: print(f"- {b} ({self.books[b]} left)")
         else:
-            print(f"No books found matching '{query}'.")
+            print("No matches found.")
 
 def main():
-    my_library = Library(["Python Basics", "Jenkins CI/CD", "Data Science 101"])
+    my_library = Library()
     
-    while True:
-        print("\n--- Library Menu ---")
-        print("1. Display\n2. Borrow\n3. Return\n4. Search\n5. Exit")
-        choice = input("Enter choice: ")
+    menu = {
+        '1': ("Display Books", my_library.display_books),
+        '2': ("Borrow Book", lambda: my_library.lend_book(input("Book name: "))),
+        '3': ("Return Book", lambda: my_library.return_book(input("Book name: "))),
+        '4': ("Search", lambda: my_library.search_book(input("Keyword: "))),
+        '5': ("Exit", exit)
+    }
 
-        if choice == '1':
-            my_library.display_books()
-        elif choice == '2':
-            book = input("Enter book name: ")
-            my_library.lend_book(book)
-        elif choice == '3':
-            book = input("Enter book name: ")
-            my_library.return_book(book)
-        elif choice == '4':
-            query = input("Search for: ")
-            my_library.search_book(query)
-        elif choice == '5':
-            print("Goodbye!")
-            break
+    while True:
+        print("\n=== LIBRARY SYSTEM V3 ===")
+        for key, value in menu.items():
+            print(f"{key}. {value[0]}")
+        
+        choice = input("Select option: ")
+        if choice in menu:
+            if choice == '5': break
+            menu[choice][1]()
         else:
-            print("Invalid choice.")
+            print("Invalid Option.")
 
 if __name__ == "__main__":
     main()
